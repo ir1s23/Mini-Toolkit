@@ -1,0 +1,1916 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mini Toolkit</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: var(--app-text-color, #0f172a);
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* Mobil Arayüz Kapsayıcısı */
+        .app-container {
+            position: relative;
+            width: 100%;
+            max-width: 440px;
+            height: 100vh;
+            max-height: 900px;
+            background-color: var(--app-bg-color, #ffffff);
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border-radius: 0px;
+        }
+
+        @media (min-width: 640px) {
+            .app-container {
+                border-radius: 24px;
+                height: 92vh;
+            }
+        }
+        
+        /* App Canvas Container */
+        .app-view {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--app-bg-color, #ffffff);
+            color: var(--app-text-color, #0f172a);
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .app-view.hidden-view {
+            transform: translateX(100%);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app-view.active-view {
+            transform: translateX(0);
+            opacity: 1;
+            z-index: 10;
+        }
+
+        /* İçerik Kaydırma Alanı */
+        .scrollable-content {
+            flex: 1;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Rich Editor Styling */
+        #note-editor:empty:before {
+            content: attr(data-placeholder);
+            color: #94a3b8;
+            pointer-events: none;
+            display: block;
+        }
+        #note-editor b, #note-editor strong { font-weight: 700; }
+        #note-editor i, #note-editor em { font-style: italic; }
+        #note-editor u { text-decoration: underline; }
+        #note-editor strike, #note-editor s { text-decoration: line-through; }
+        #note-editor ul { list-style-type: disc; padding-left: 1.25rem; margin: 0.25rem 0; }
+        #note-editor ol { list-style-type: decimal; padding-left: 1.25rem; margin: 0.25rem 0; }
+        #note-editor blockquote { border-left: 3px solid #cbd5e1; padding-left: 0.75rem; color: #475569; font-style: italic; }
+
+        /* Custom Color Picker Widget UI */
+        .color-picker-modal {
+            background: #18181b;
+            color: #ffffff;
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+            width: 280px;
+        }
+        .sat-val-box {
+            position: relative;
+            width: 170px;
+            height: 150px;
+            cursor: crosshair;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .sat-val-cursor {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 2px rgba(0,0,0,0.8);
+            transform: translate(-6px, -6px);
+            pointer-events: none;
+        }
+        .hue-slider-bar {
+            position: relative;
+            width: 24px;
+            height: 150px;
+            background: linear-gradient(to bottom, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .hue-cursor {
+            position: absolute;
+            left: -2px;
+            right: -2px;
+            height: 6px;
+            border: 2px solid #ffffff;
+            background: rgba(0,0,0,0.2);
+            border-radius: 2px;
+            transform: translateY(-3px);
+            pointer-events: none;
+        }
+
+        /* Özel Modal Tasarımı */
+        .custom-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 16px;
+        }
+        .custom-modal-box {
+            background-color: #231918;
+            border: 1px solid #3b2826;
+            border-radius: 20px;
+            padding: 24px;
+            width: 100%;
+            max-width: 360px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes modalPop {
+            0% { transform: scale(0.92); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .custom-modal-input {
+            width: 100%;
+            background-color: transparent;
+            border: 1.5px solid #ffb4ab;
+            border-radius: 12px;
+            padding: 12px 14px;
+            color: #ffffff;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .custom-modal-input:focus {
+            border-color: #f87171;
+        }
+        .custom-modal-btn-confirm {
+            background-color: #ffb4ab;
+            color: #441010;
+            font-weight: 700;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            transition: opacity 0.2s;
+        }
+        .custom-modal-btn-confirm:hover {
+            opacity: 0.9;
+        }
+        .custom-modal-btn-cancel {
+            background-color: #533635;
+            color: #ffb4ab;
+            font-weight: 700;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            transition: opacity 0.2s;
+        }
+        .custom-modal-btn-cancel:hover {
+            opacity: 0.9;
+        }
+
+        /* Hesap Makinesi Özel Stilleri */
+        .calc-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            font-weight: 700;
+            border-radius: 1rem;
+            user-select: none;
+            transition: all 0.15s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .calc-btn:active {
+            transform: scale(0.93);
+            filter: brightness(0.9);
+        }
+
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+
+      <!-- ==================== PAGE 1: MAIN DASHBOARD ==================== -->
+        <div id="view-main" class="app-view active-view flex flex-col h-full relative overflow-hidden">
+            <header class="p-4 border-b border-slate-100/10 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-20" id="main-header">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-200">
+                        <i class="fa-solid fa-folder-closed text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-black tracking-tight" id="app-title-text">Mini Toolkit</h1>
+                        <p class="text-[11px] opacity-70 font-medium">Kişisel Dijital Araç-Gereçler</p>
+                    </div>
+                </div>
+                <!-- AYARLAR BUTONU -->
+                <button onclick="navigateTo('view-settings')" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition active:scale-95">
+                    <i class="fa-solid fa-gear text-lg"></i>
+                </button>
+            </header>
+
+            <main class="scrollable-content flex-1 overflow-y-auto p-5 flex flex-col gap-4 pb-24">
+                <button id="btn-color-red" onclick="navigateTo('view-media')" class="w-full text-white font-bold py-5 px-6 rounded-2xl shadow-lg flex items-center justify-between transition-all active:scale-95" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
+                            <i class="fa-solid fa-image text-2xl"></i>
+                        </div>
+                        <div class="text-left">
+                            <div class="text-lg font-bold">Fotoğraflarım</div>
+                            <div class="text-xs font-normal opacity-80" id="media-stat-sub">0 Öğe Depolandı</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-arrow-right opacity-80 text-xl"></i>
+                </button>
+
+                <button id="btn-color-green" onclick="navigateTo('view-audio')" class="w-full text-white font-bold py-5 px-6 rounded-2xl shadow-lg flex items-center justify-between transition-all active:scale-95" style="background: linear-gradient(135deg, #10b981, #059669);">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
+                            <i class="fa-solid fa-microphone-lines text-2xl"></i>
+                        </div>
+                        <div class="text-left">
+                            <div class="text-lg font-bold">Ses Kayıtlarım</div>
+                            <div class="text-xs font-normal opacity-80" id="audio-stat-sub">0 Ses Kaydı</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-arrow-right opacity-80 text-xl"></i>
+                </button>
+
+                <button id="btn-color-purple" onclick="navigateTo('view-dhikr')" class="w-full text-white font-bold py-5 px-6 rounded-2xl shadow-lg flex items-center justify-between transition-all active:scale-95" style="background: linear-gradient(135deg, #14b8a6, #0d9488);">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
+                            <i class="fa-solid fa-fingerprint text-2xl"></i>
+                        </div>
+                        <div class="text-left">
+                            <div class="text-lg font-bold">Zikirmatik</div>
+                            <div class="text-xs font-normal opacity-80" id="dhikr-stat-sub">Toplam: 0 Zikir</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-arrow-right opacity-80 text-xl"></i>
+                </button>
+
+                <button id="btn-color-blue" onclick="navigateTo('view-notes')" class="w-full text-white font-bold py-5 px-6 rounded-2xl shadow-lg flex items-center justify-between transition-all active:scale-95" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
+                            <i class="fa-solid fa-note-sticky text-2xl"></i>
+                        </div>
+                        <div class="text-left">
+                            <div class="text-lg font-bold">Notlarım</div>
+                            <div class="text-xs font-normal opacity-80" id="notes-stat-sub">0 Gelişmiş Not</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-arrow-right opacity-80 text-xl"></i>
+                </button>
+
+                <button id="btn-color-orange" onclick="navigateTo('view-calculator')" class="w-full text-white font-bold py-5 px-6 rounded-2xl shadow-lg flex items-center justify-between transition-all active:scale-95" style="background: linear-gradient(135deg, #f97316, #ea580c);">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
+                            <i class="fa-solid fa-calculator text-2xl"></i>
+                        </div>
+                        <div class="text-left">
+                            <div class="text-lg font-bold">Hesap Makinesi</div>
+                            <div class="text-xs font-normal opacity-80">Gelişmiş Bilimsel & Geçmişli</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-arrow-right opacity-80 text-xl"></i>
+                </button>
+            </main>
+
+            <footer class="p-4 text-center text-xs opacity-70 border-t border-slate-100 bg-inherit">
+                <i class="fa-solid fa-shield-halved text-emerald-500 mr-1"></i> Verileriniz silinmediği sürece cihazda saklanır.
+            </footer>
+        </div>
+
+        <!-- ==================== PAGE: SETTINGS VIEW (EKLENEN AYARLAR EKRANI) ==================== -->
+        <div id="view-settings" class="app-view hidden-view">
+            <header class="p-4 border-b border-slate-100/10 flex items-center justify-between sticky top-0 bg-inherit z-20 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <button onclick="navigateTo('view-main')" class="w-9 h-9 rounded-full bg-slate-500/20 flex items-center justify-center hover:bg-slate-500/30 transition">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <h2 class="text-lg font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-gear"></i> Ayarlar & Görünüm
+                    </h2>
+                </div>
+                <button onclick="resetThemeColors()" class="text-xs bg-red-600/80 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg transition font-semibold">Sıfırla</button>
+            </header>
+
+            <main class="scrollable-content p-5 flex flex-col gap-4 pb-24">
+                <!-- Mod Seçenekleri -->
+                <div class="border border-slate-500/20 rounded-2xl p-4 flex flex-col gap-3 bg-slate-500/5">
+                    <h3 class="text-xs font-bold opacity-70 uppercase tracking-wider">Mod Seçenekleri</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="setDarkMode()" class="bg-slate-900 text-white hover:bg-slate-800 py-3 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition shadow">
+                            <i class="fa-solid fa-moon text-indigo-400"></i> Karanlık Mod
+                        </button>
+                        <button onclick="setLightMode()" class="bg-slate-100 text-slate-800 hover:bg-slate-200 py-3 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition shadow">
+                            <i class="fa-solid fa-sun text-amber-500"></i> Aydınlık Mod
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Özel Renk Ayarları -->
+                <div class="border border-slate-500/20 rounded-2xl p-4 flex flex-col gap-3 bg-slate-500/5">
+                    <h3 class="text-xs font-bold opacity-70 uppercase tracking-wider">Özel Renk Belirleme</h3>
+                    
+                    <!-- Arka Plan -->
+                    <div onclick="openCustomPickerModal('bg-color', 'Uygulama Arka Planı')" class="flex items-center justify-between p-3 rounded-xl cursor-pointer hover:bg-slate-500/10 transition border border-slate-500/10">
+                        <span class="text-xs font-semibold">Uygulama Arka Plan Rengi</span>
+                        <div class="flex items-center gap-2">
+                            <span id="hex-bg-color" class="text-[10px] font-mono opacity-70">#ffffff</span>
+                            <div id="preview-bg-color" class="w-6 h-6 rounded-full border border-slate-400 shadow-inner" style="background:#ffffff"></div>
+                        </div>
+                    </div>
+
+                    <!-- Fotoğraflarım Butonu -->
+                    <div onclick="openCustomPickerModal('red-btn-color', 'Fotoğraflarım Butonu')" class="flex items-center justify-between p-3 rounded-xl cursor-pointer hover:bg-slate-500/10 transition border border-slate-500/10">
+                        <span class="text-xs font-semibold">Fotoğraflarım Butonu</span>
+                        <div class="flex items-center gap-2">
+                            <span id="hex-red-btn-color" class="text-[10px] font-mono opacity-70">#ef4444</span>
+                            <div id="preview-red-btn-color" class="w-6 h-6 rounded-full border border-slate-400 shadow-inner" style="background:#ef4444"></div>
+                        </div>
+                    </div>
+
+                    <!-- Ses Kayıtlarım Butonu -->
+                    <div onclick="openCustomPickerModal('green-btn-color', 'Ses Kayıtlarım Butonu')" class="flex items-center justify-between p-3 rounded-xl cursor-pointer hover:bg-slate-500/10 transition border border-slate-500/10">
+                        <span class="text-xs font-semibold">Ses Kayıtlarım Butonu</span>
+                        <div class="flex items-center gap-2">
+                            <span id="hex-green-btn-color" class="text-[10px] font-mono opacity-70">#10b981</span>
+                            <div id="preview-green-btn-color" class="w-6 h-6 rounded-full border border-slate-400 shadow-inner" style="background:#10b981"></div>
+                        </div>
+                    </div>
+
+                    <!-- Zikirmatik Butonu -->
+                    <div onclick="openCustomPickerModal('purple-btn-color', 'Zikirmatik Butonu')" class="flex items-center justify-between p-3 rounded-xl cursor-pointer hover:bg-slate-500/10 transition border border-slate-500/10">
+                        <span class="text-xs font-semibold">Zikirmatik Butonu</span>
+                        <div class="flex items-center gap-2">
+                            <span id="hex-purple-btn-color" class="text-[10px] font-mono opacity-70">#14b8a6</span>
+                            <div id="preview-purple-btn-color" class="w-6 h-6 rounded-full border border-slate-400 shadow-inner" style="background:#14b8a6"></div>
+                        </div>
+                    </div>
+
+                    <!-- Notlarım Butonu -->
+                    <div onclick="openCustomPickerModal('blue-btn-color', 'Notlarım Butonu')" class="flex items-center justify-between p-3 rounded-xl cursor-pointer hover:bg-slate-500/10 transition border border-slate-500/10">
+                        <span class="text-xs font-semibold">Notlarım Butonu</span>
+                        <div class="flex items-center gap-2">
+                            <span id="hex-blue-btn-color" class="text-[10px] font-mono opacity-70">#3b82f6</span>
+                            <div id="preview-blue-btn-color" class="w-6 h-6 rounded-full border border-slate-400 shadow-inner" style="background:#3b82f6"></div>
+                        </div>
+                    </div>
+
+                    <!-- Hesap Makinesi Butonu -->
+                    <div onclick="openCustomPickerModal('orange-btn-color', 'Hesap Makinesi Butonu')" class="flex items-center justify-between p-3 rounded-xl cursor-pointer hover:bg-slate-500/10 transition border border-slate-500/10">
+                        <span class="text-xs font-semibold">Hesap Makinesi Butonu</span>
+                        <div class="flex items-center gap-2">
+                            <span id="hex-orange-btn-color" class="text-[10px] font-mono opacity-70">#f97316</span>
+                            <div id="preview-orange-btn-color" class="w-6 h-6 rounded-full border border-slate-400 shadow-inner" style="background:#f97316"></div>
+                        </div>
+                    </div>
+
+                    <!-- Yazı Rengi -->
+                    <div onclick="openCustomPickerModal('text-color', 'Genel Yazı Rengi')" class="flex items-center justify-between p-3 rounded-xl cursor-pointer hover:bg-slate-500/10 transition border border-slate-500/10">
+                        <span class="text-xs font-semibold">Genel Yazı Rengi</span>
+                        <div class="flex items-center gap-2">
+                            <span id="hex-text-color" class="text-[10px] font-mono opacity-70">#0f172a</span>
+                            <div id="preview-text-color" class="w-6 h-6 rounded-full border border-slate-400 shadow-inner" style="background:#0f172a"></div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- ==================== PAGE: DHIKR VIEW (ZİKİRMATİK) ==================== -->
+        <div id="view-dhikr" class="app-view hidden-view">
+            <header class="p-4 border-b border-teal-100 bg-teal-600 text-white flex items-center justify-between sticky top-0 z-20 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <button onclick="navigateTo('view-main')" class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition">
+                        <i class="fa-solid fa-chevron-left text-white"></i>
+                    </button>
+                    <h2 class="text-lg font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-fingerprint"></i> Zikirmatik
+                    </h2>
+                </div>
+                <button onclick="resetDhikr()" class="text-xs bg-teal-700 hover:bg-teal-800 px-3 py-1.5 rounded-lg transition font-semibold">Sıfırla</button>
+            </header>
+
+            <main class="scrollable-content p-6 flex flex-col items-center justify-center h-full gap-6">
+                <!-- Dijital Ekran Göstergesi -->
+                <div class="w-full bg-slate-900 border-4 border-teal-500/40 rounded-3xl p-6 shadow-2xl flex flex-col items-center justify-center gap-2 relative">
+                    <div class="text-teal-400 text-xs font-mono tracking-widest uppercase">Elektronik Sayaç</div>
+                    <div id="dhikr-display" class="text-white text-6xl font-black font-mono tracking-wider my-2">0</div>
+                    <div id="dhikr-target-info" class="text-slate-400 text-xs font-medium">Hedef: 33</div>
+                </div>
+
+                <!-- Büyük Sayaç Butonu (Zikir Çekme Alanı) -->
+                <div class="flex flex-col items-center gap-4 w-full">
+                    <button onclick="incrementDhikr()" class="w-40 h-40 bg-gradient-to-tr from-teal-600 to-emerald-500 hover:from-teal-500 hover:to-emerald-400 text-white rounded-full shadow-2xl flex flex-col items-center justify-center border-8 border-slate-900/10 active:scale-95 transition-all cursor-pointer">
+                        <i class="fa-solid fa-fingerprint text-4xl mb-1"></i>
+                        <span class="text-xs font-bold tracking-wider">ÇEK</span>
+                    </button>
+                </div>
+
+                <!-- Kontrol ve Hedef Butonları -->
+                <div class="grid grid-cols-2 gap-3 w-full mt-4">
+                    <button onclick="setDhikrTarget()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-4 rounded-2xl text-xs flex items-center justify-center gap-2 transition active:scale-98 shadow-sm">
+                        <i class="fa-solid fa-bullseye text-teal-600"></i> Hedef Belirle
+                    </button>
+                    <button onclick="saveDhikrRecord()" class="bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold py-3 px-4 rounded-2xl text-xs flex items-center justify-center gap-2 transition active:scale-98 shadow-sm border border-teal-200">
+                        <i class="fa-solid fa-floppy-disk text-teal-600"></i> Kaydet / Özeti Gör
+                    </button>
+                </div>
+            </main>
+        </div>
+
+
+        <!-- ==================== PAGE 2: MEDIA VIEW ==================== -->
+        <div id="view-media" class="app-view hidden-view">
+            <header class="p-4 border-b border-red-100 bg-red-600 text-white flex items-center justify-between sticky top-0 z-20 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <button onclick="navigateTo('view-main')" class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition">
+                        <i class="fa-solid fa-chevron-left text-white"></i>
+                    </button>
+                    <h2 class="text-lg font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-image"></i> Fotoğraflarım
+                    </h2>
+                </div>
+                <span id="media-count-badge" class="bg-white/20 text-xs px-2.5 py-1 rounded-full font-semibold">0</span>
+            </header>
+
+            <main class="scrollable-content p-4 flex flex-col gap-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="cursor-pointer bg-red-50 border-2 border-dashed border-red-200 hover:bg-red-100 text-red-700 font-semibold p-4 rounded-2xl flex flex-col items-center justify-center gap-2 transition active:scale-95">
+                        <i class="fa-solid fa-images text-2xl text-red-500"></i>
+                        <span class="text-xs">Galeriden Ekle</span>
+                        <input type="file" id="media-upload-input" accept="image/*" multiple class="hidden" onchange="handleMediaUpload(event)">
+                    </label>
+
+                    <button onclick="openCameraModal()" class="bg-red-50 border-2 border-dashed border-red-200 hover:bg-red-100 text-red-700 font-semibold p-4 rounded-2xl flex flex-col items-center justify-center gap-2 transition active:scale-95">
+                        <i class="fa-solid fa-camera text-2xl text-red-500"></i>
+                        <span class="text-xs">Kamera / Çekim</span>
+                    </button>
+                </div>
+
+                <div id="media-grid" class="grid grid-cols-2 gap-3 pb-8"></div>
+            </main>
+        </div>
+
+
+        <!-- ==================== PAGE 3: AUDIO VIEW ==================== -->
+        <div id="view-audio" class="app-view hidden-view">
+            <header class="p-4 border-b border-emerald-100 bg-emerald-600 text-white flex items-center justify-between sticky top-0 z-20 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <button onclick="navigateTo('view-main')" class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition">
+                        <i class="fa-solid fa-chevron-left text-white"></i>
+                    </button>
+                    <h2 class="text-lg font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-microphone"></i> Ses Kayıtlarım
+                    </h2>
+                </div>
+                <span id="audio-count-badge" class="bg-white/20 text-xs px-2.5 py-1 rounded-full font-semibold">0</span>
+            </header>
+
+            <main class="scrollable-content p-4 flex flex-col gap-4">
+                <div class="bg-gradient-to-b from-emerald-50 to-white rounded-2xl p-5 border border-emerald-200 flex flex-col items-center justify-center gap-3 shadow-sm">
+                    <div id="recording-timer" class="text-3xl font-mono font-black text-emerald-900 tracking-wider">00:00</div>
+                    <div id="recording-status" class="text-xs font-semibold text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full">Mikrofon Hazır</div>
+
+                    <div class="flex items-center gap-6 mt-2">
+                        <button id="btn-rec-start" onclick="startAudioRecording()" class="w-16 h-16 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition">
+                            <i class="fa-solid fa-microphone text-2xl"></i>
+                        </button>
+                        <button id="btn-rec-stop" onclick="stopAudioRecording()" disabled class="w-16 h-16 bg-red-500 opacity-40 cursor-not-allowed text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition">
+                            <i class="fa-solid fa-square text-2xl"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="audio-list" class="flex flex-col gap-3 pb-8"></div>
+            </main>
+        </div>
+
+
+        <!-- ==================== PAGE 4: ADVANCED NOTES VIEW ==================== -->
+        <div id="view-notes" class="app-view hidden-view">
+            <header class="p-4 border-b border-blue-100 bg-blue-600 text-white flex items-center justify-between sticky top-0 z-20 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <button onclick="navigateTo('view-main')" class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition">
+                        <i class="fa-solid fa-chevron-left text-white"></i>
+                    </button>
+                    <h2 class="text-lg font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-note-sticky"></i> Notlarım
+                    </h2>
+                </div>
+                <button onclick="toggleNoteEditor()" class="bg-white text-blue-600 font-bold text-xs px-3 py-2 rounded-xl flex items-center gap-1 shadow transition active:scale-95">
+                    <i class="fa-solid fa-plus"></i> Yeni Not
+                </button>
+            </header>
+
+            <main class="scrollable-content p-4 flex flex-col gap-4">
+                <div class="flex flex-col gap-2">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
+                        <input type="text" id="note-search-input" oninput="filterNotes()" placeholder="Notlarda ara..." class="w-full bg-slate-100 pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs" id="category-pills">
+                        <div id="category-pills-list" class="flex items-center gap-1.5"></div>
+                        <button onclick="promptAddCategory()" class="px-2.5 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold flex items-center justify-center transition active:scale-95 shadow-sm" title="Yeni Kategori Ekle">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="note-editor-card" class="hidden bg-white rounded-2xl p-4 border border-blue-200 shadow-md flex-col gap-3">
+                    <div class="flex items-center justify-between border-b pb-2 border-slate-100">
+                        <span class="text-xs font-bold text-blue-600 uppercase tracking-wider">Yeni Not Oluştur</span>
+                        <button onclick="toggleNoteEditor()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+                    </div>
+
+                    <input type="text" id="note-title-input" placeholder="Not Başlığı..." class="w-full bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 font-bold text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+
+                    <div class="flex items-center gap-2">
+                        <select id="note-category-select" class="bg-slate-50 border border-slate-200 text-xs rounded-xl p-2 font-medium text-slate-700"></select>
+                        <label class="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
+                            <input type="checkbox" id="note-pin-checkbox" class="rounded text-blue-600">
+                            <span>En Üste Sabitle</span>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center gap-1 flex-wrap bg-slate-100 p-1.5 rounded-xl border border-slate-200 text-slate-700 text-xs">
+                        <button type="button" onclick="execCmd('bold')" title="Kalın" class="p-1.5 hover:bg-white rounded font-bold"><i class="fa-solid fa-bold"></i></button>
+                        <button type="button" onclick="execCmd('italic')" title="İtalik" class="p-1.5 hover:bg-white rounded italic"><i class="fa-solid fa-italic"></i></button>
+                        <button type="button" onclick="execCmd('underline')" title="Altı Çizili" class="p-1.5 hover:bg-white rounded underline"><i class="fa-solid fa-underline"></i></button>
+                        <button type="button" onclick="execCmd('strikeThrough')" title="Üstü Çizili" class="p-1.5 hover:bg-white rounded line-through"><i class="fa-solid fa-strikethrough"></i></button>
+
+                        <div class="h-4 w-px bg-slate-300 mx-1"></div>
+
+                        <select onchange="execCmdArg('fontSize', this.value)" class="bg-white border border-slate-200 rounded px-1 py-0.5 text-xs">
+                            <option value="2">Küçük</option>
+                            <option value="3" selected>Normal</option>
+                            <option value="5">Büyük</option>
+                            <option value="6">Çok Büyük</option>
+                        </select>
+
+                        <button type="button" onclick="openInlineColorPicker('foreColor')" title="Yazı Rengi" class="p-1.5 hover:bg-white rounded flex items-center gap-1">
+                            <i class="fa-solid fa-font text-blue-600"></i>
+                        </button>
+                        <button type="button" onclick="openInlineColorPicker('hiliteColor')" title="Vurgu Rengi" class="p-1.5 hover:bg-white rounded flex items-center gap-1">
+                            <i class="fa-solid fa-highlighter text-yellow-500"></i>
+                        </button>
+
+                        <div class="h-4 w-px bg-slate-300 mx-1"></div>
+
+                        <button type="button" onclick="execCmd('justifyLeft')" title="Sola Hizala" class="p-1.5 hover:bg-white rounded"><i class="fa-solid fa-align-left"></i></button>
+                        <button type="button" onclick="execCmd('justifyCenter')" title="Ortala" class="p-1.5 hover:bg-white rounded"><i class="fa-solid fa-align-center"></i></button>
+                        <button type="button" onclick="execCmd('justifyRight')" title="Sağa Hizala" class="p-1.5 hover:bg-white rounded"><i class="fa-solid fa-align-right"></i></button>
+
+                        <div class="h-4 w-px bg-slate-300 mx-1"></div>
+
+                        <button type="button" onclick="execCmd('insertUnorderedList')" title="Maddeli Liste" class="p-1.5 hover:bg-white rounded"><i class="fa-solid fa-list-ul"></i></button>
+                        <button type="button" onclick="execCmd('insertOrderedList')" title="Numaralı Liste" class="p-1.5 hover:bg-white rounded"><i class="fa-solid fa-list-ol"></i></button>
+                        <button type="button" onclick="execCmd('formatBlock', 'blockquote')" title="Alıntı" class="p-1.5 hover:bg-white rounded"><i class="fa-solid fa-quote-right"></i></button>
+                    </div>
+
+                    <div id="note-editor" contenteditable="true" oninput="updateWordCount()" class="w-full min-h-[140px] max-h-[220px] overflow-y-auto bg-slate-50 p-3 rounded-xl border border-slate-200 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" data-placeholder="Not detaylarınızı buraya yazın..."></div>
+
+                    <div class="flex items-center justify-between text-[11px] text-slate-400">
+                        <span id="note-word-count">0 Kelime | 0 Karakter</span>
+                    </div>
+
+                    <button onclick="saveNote()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md transition active:scale-98 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> Notu Kaydet
+                    </button>
+                </div>
+
+                <div id="notes-list" class="flex flex-col gap-3 pb-8"></div>
+            </main>
+        </div>
+
+
+        <!-- ==================== PAGE 5: CALCULATOR VIEW ==================== -->
+        <div id="view-calculator" class="app-view hidden-view">
+            <header class="p-4 border-b border-orange-100 bg-orange-600 text-white flex items-center justify-between sticky top-0 z-20 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <button onclick="navigateTo('view-main')" class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition">
+                        <i class="fa-solid fa-chevron-left text-white"></i>
+                    </button>
+                    <h2 class="text-lg font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-calculator"></i> Hesap Makinesi
+                    </h2>
+                </div>
+                <button onclick="calcToggleScientific()" id="btn-calc-mode" class="bg-white/20 text-xs px-3 py-1.5 rounded-full font-semibold hover:bg-white/30 transition">
+                    Bilimsel
+                </button>
+            </header>
+
+            <main class="scrollable-content p-4 flex flex-col justify-between h-full gap-2">
+                <div class="bg-slate-900 text-white p-4 rounded-2xl shadow-inner flex flex-col justify-end min-h-[120px] relative overflow-hidden">
+                    <button onclick="calcToggleHistoryModal()" class="absolute top-3 left-3 text-slate-400 hover:text-white text-xs flex items-center gap-1 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700">
+                        <i class="fa-solid fa-clock-rotate-left"></i> Geçmiş
+                    </button>
+                    <div id="calc-expression" class="text-slate-400 text-right text-sm font-mono h-6 overflow-x-auto whitespace-nowrap scrollbar-none"></div>
+                    <div id="calc-display" class="text-white text-right text-3xl font-bold font-mono tracking-wider overflow-x-auto whitespace-nowrap scrollbar-none mt-1">0</div>
+                </div>
+
+                <div id="calc-scientific-panel" class="hidden grid grid-cols-5 gap-1.5">
+                    <button onclick="calcAppendFunc('sin')" class="calc-btn bg-slate-200 text-slate-700 text-xs py-2">sin</button>
+                    <button onclick="calcAppendFunc('cos')" class="calc-btn bg-slate-200 text-slate-700 text-xs py-2">cos</button>
+                    <button onclick="calcAppendFunc('tan')" class="calc-btn bg-slate-200 text-slate-700 text-xs py-2">tan</button>
+                    <button onclick="calcAppendFunc('sqrt')" class="calc-btn bg-slate-200 text-slate-700 text-xs py-2">√</button>
+                    <button onclick="calcAppendOp('^')" class="calc-btn bg-slate-200 text-slate-700 text-xs py-2">x^y</button>
+                    <button onclick="calcAppendFunc('log')" class="calc-btn bg-slate-200 text-slate-700 text-xs py-2">log</button>
+                    <button onclick="calcAppendFunc('ln')" class="calc-btn bg-slate-200 text-slate-700 text-xs py-2">ln</button>
+                    <button onclick="calcAppendConstant('π')" class="calc-btn bg-slate-200 text-slate-700 text-xs py-2">π</button>
+                    <button onclick="calcAppendConstant('e')" class="calc-btn bg-slate-200 text-slate-700 text-xs py-2">e</button>
+                    <button onclick="calcAppendOp('!')" class="calc-btn bg-slate-200 text-slate-700 text-xs py-2">n!</button>
+                </div>
+
+                <div class="grid grid-cols-4 gap-2 my-auto">
+                    <button onclick="calcClear()" class="calc-btn bg-red-100 text-red-600 py-3.5">C</button>
+                    <button onclick="calcParenthesis()" class="calc-btn bg-slate-100 text-slate-700 py-3.5">( )</button>
+                    <button onclick="calcAppendOp('%')" class="calc-btn bg-slate-100 text-slate-700 py-3.5">%</button>
+                    <button onclick="calcAppendOp('÷')" class="calc-btn bg-orange-100 text-orange-600 py-3.5">÷</button>
+
+                    <button onclick="calcAppendNum('7')" class="calc-btn bg-slate-50 text-slate-800 py-3.5">7</button>
+                    <button onclick="calcAppendNum('8')" class="calc-btn bg-slate-50 text-slate-800 py-3.5">8</button>
+                    <button onclick="calcAppendNum('9')" class="calc-btn bg-slate-50 text-slate-800 py-3.5">9</button>
+                    <button onclick="calcAppendOp('×')" class="calc-btn bg-orange-100 text-orange-600 py-3.5">×</button>
+
+                    <button onclick="calcAppendNum('4')" class="calc-btn bg-slate-50 text-slate-800 py-3.5">4</button>
+                    <button onclick="calcAppendNum('5')" class="calc-btn bg-slate-50 text-slate-800 py-3.5">5</button>
+                    <button onclick="calcAppendNum('6')" class="calc-btn bg-slate-50 text-slate-800 py-3.5">6</button>
+                    <button onclick="calcAppendOp('-')" class="calc-btn bg-orange-100 text-orange-600 py-3.5">-</button>
+
+                    <button onclick="calcAppendNum('1')" class="calc-btn bg-slate-50 text-slate-800 py-3.5">1</button>
+                    <button onclick="calcAppendNum('2')" class="calc-btn bg-slate-50 text-slate-800 py-3.5">2</button>
+                    <button onclick="calcAppendNum('3')" class="calc-btn bg-slate-50 text-slate-800 py-3.5">3</button>
+                    <button onclick="calcAppendOp('+')" class="calc-btn bg-orange-100 text-orange-600 py-3.5">+</button>
+
+                    <button onclick="calcToggleSign()" class="calc-btn bg-slate-50 text-slate-800 py-3.5">±</button>
+                    <button onclick="calcAppendNum('0')" class="calc-btn bg-slate-50 text-slate-800 py-3.5">0</button>
+                    <button onclick="calcAppendDot()" class="calc-btn bg-slate-50 text-slate-800 py-3.5">,</button>
+                    <button onclick="calcBackspace()" class="calc-btn bg-slate-200 text-slate-700 py-3.5"><i class="fa-solid fa-backspace"></i></button>
+
+                    <button onclick="calcEvaluate()" class="calc-btn col-span-4 bg-orange-600 text-white py-3.5 text-xl mt-1 shadow-md hover:bg-orange-700">=</button>
+                </div>
+            </main>
+        </div>
+
+        <!-- ==================== HESAP MAKİNESİ GEÇMİŞ MODALI ==================== -->
+        <div id="modal-calc-history" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+            <div class="bg-slate-900 border border-slate-700 rounded-2xl p-4 w-full max-w-sm flex flex-col gap-3 shadow-2xl max-h-[80vh]">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <span class="text-sm font-bold text-white flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-orange-500"></i> İşlem Geçmişi</span>
+                    <button onclick="calcToggleHistoryModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
+                
+                <div id="calc-history-list" class="flex flex-col gap-2 overflow-y-auto pr-1 my-2 min-h-[150px]"></div>
+
+                <div class="flex gap-2 border-t border-slate-800 pt-3">
+                    <button onclick="calcClearHistory()" class="flex-1 bg-red-900/50 hover:bg-red-800 text-red-200 font-semibold py-2 rounded-xl text-xs flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-trash-can"></i> Temizle
+                    </button>
+                    <button onclick="calcToggleHistoryModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2 rounded-xl text-xs">Kapat</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== CANLI WEBCAM MODAL ==================== -->
+        <div id="modal-camera" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex flex-col items-center justify-center p-4">
+            <div class="bg-slate-900 border border-slate-700 rounded-2xl p-4 w-full max-w-sm flex flex-col items-center gap-4 shadow-2xl">
+                <div class="flex justify-between items-center w-full border-b border-slate-800 pb-2">
+                    <span class="text-xs font-bold text-slate-200 flex items-center gap-2"><i class="fa-solid fa-camera text-red-500"></i> Kamera Çekimi</span>
+                    <button onclick="closeCameraModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
+                
+                <div class="relative w-full aspect-square bg-black rounded-xl overflow-hidden flex items-center justify-center">
+                    <video id="webcam-video" autoplay playsinline class="w-full h-full object-cover"></video>
+                    <canvas id="webcam-canvas" class="hidden"></canvas>
+                </div>
+
+                <div class="flex gap-3 w-full">
+                    <button onclick="closeCameraModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-xs">İptal</button>
+                    <button onclick="takeWebcamPicture()" class="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-circle-dot"></i> Fotoğraf Çek
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== CUSTOM COLOR PICKER MODAL ==================== -->
+        <div id="modal-color-picker" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+            <div class="color-picker-modal border border-zinc-700 flex flex-col gap-3">
+                <div class="flex items-center justify-between pb-2 border-b border-zinc-800">
+                    <span id="color-picker-title" class="text-xs font-bold text-zinc-300">Renk Seçici</span>
+                    <button onclick="closeColorPickerModal()" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <div class="flex gap-3 justify-center items-start my-1">
+                    <div id="sat-val-container" class="sat-val-box">
+                        <canvas id="sat-val-canvas" width="170" height="150"></canvas>
+                        <div id="sat-val-cursor" class="sat-val-cursor"></div>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <div class="flex gap-2 items-center">
+                            <div id="hue-slider-container" class="hue-slider-bar">
+                                <div id="hue-cursor" class="hue-cursor"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-2 flex-1 justify-start">
+                        <input type="text" id="picker-hex-input" class="bg-zinc-900 border border-zinc-700 text-xs font-mono text-zinc-100 px-2 py-1 rounded w-full focus:outline-none focus:border-zinc-500" value="#b48484" onchange="manualHexInput(this.value)">
+                        <div id="picker-preview-box" class="w-full h-8 rounded border border-zinc-700 shadow-inner mt-2" style="background:#b48484"></div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-zinc-800">
+                    <button onclick="closeColorPickerModal()" class="text-xs text-zinc-400 hover:text-white px-3 py-1.5 rounded">İptal</button>
+                    <button onclick="applyCustomColor()" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-1.5 rounded-lg shadow">Uygula</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ÖZEL MODAL YAPISI -->
+    <div id="customModal" class="custom-modal-overlay" style="display: none;">
+        <div class="custom-modal-box">
+            <p id="modalMessage" class="text-white text-sm leading-relaxed"></p>
+            <input type="text" id="modalInput" class="custom-modal-input" placeholder="Yazınız..." style="display: none;" />
+            <div class="flex justify-end gap-2 mt-2">
+                <button id="modalConfirmBtn" class="custom-modal-btn-confirm">Tamam</button>
+                <button id="modalCancelBtn" class="custom-modal-btn-cancel" style="display: none;">İptal</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- EVRENSEL ÖZEL MODAL FONKSİYONLARI ---
+        function customAlert(mesaj) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById("customModal");
+                const msgEl = document.getElementById("modalMessage");
+                const inputEl = document.getElementById("modalInput");
+                const confirmBtn = document.getElementById("modalConfirmBtn");
+                const cancelBtn = document.getElementById("modalCancelBtn");
+
+                msgEl.textContent = mesaj;
+                inputEl.style.display = "none";
+                cancelBtn.style.display = "none";
+                modal.style.display = "flex";
+
+                function onConfirm() {
+                    modal.style.display = "none";
+                    confirmBtn.removeEventListener("click", onConfirm);
+                    resolve();
+                }
+
+                confirmBtn.addEventListener("click", onConfirm);
+            });
+        }
+
+        function customPrompt(mesaj, varsayilan = "") {
+            return new Promise((resolve) => {
+                const modal = document.getElementById("customModal");
+                const msgEl = document.getElementById("modalMessage");
+                const inputEl = document.getElementById("modalInput");
+                const confirmBtn = document.getElementById("modalConfirmBtn");
+                const cancelBtn = document.getElementById("modalCancelBtn");
+
+                msgEl.textContent = mesaj;
+                inputEl.value = varsayilan;
+                inputEl.style.display = "block";
+                cancelBtn.style.display = "inline-block";
+                modal.style.display = "flex";
+                inputEl.focus();
+
+                function onConfirm() {
+                    const val = inputEl.value;
+                    closeModal();
+                    resolve(val);
+                }
+
+                function onCancel() {
+                    closeModal();
+                    resolve(null);
+                }
+
+                function closeModal() {
+                    modal.style.display = "none";
+                    confirmBtn.removeEventListener("click", onConfirm);
+                    cancelBtn.removeEventListener("click", onCancel);
+                }
+
+                confirmBtn.addEventListener("click", onConfirm);
+                cancelBtn.addEventListener("click", onCancel);
+            });
+        }
+
+        function customConfirm(mesaj) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById("customModal");
+                const msgEl = document.getElementById("modalMessage");
+                const inputEl = document.getElementById("modalInput");
+                const confirmBtn = document.getElementById("modalConfirmBtn");
+                const cancelBtn = document.getElementById("modalCancelBtn");
+
+                msgEl.textContent = mesaj;
+                inputEl.style.display = "none";
+                cancelBtn.style.display = "inline-block";
+                modal.style.display = "flex";
+
+                function onConfirm() {
+                    closeModal();
+                    resolve(true);
+                }
+
+                function onCancel() {
+                    closeModal();
+                    resolve(false);
+                }
+
+                function closeModal() {
+                    modal.style.display = "none";
+                    confirmBtn.removeEventListener("click", onConfirm);
+                    cancelBtn.removeEventListener("click", onCancel);
+                }
+
+                confirmBtn.addEventListener("click", onConfirm);
+                cancelBtn.addEventListener("click", onCancel);
+            });
+        }
+
+        // IndexedDB Configuration
+        const DB_NAME = "KayitlarimEnhancedDB";
+        const DB_VERSION = 2;
+        let db;
+
+        // Dynamic Note Categories
+        const defaultCategories = ["Kişisel", "İş", "Önemli", "Fikirler"];
+        let categories = [...defaultCategories];
+        let currentCategoryFilter = 'Tümü';
+
+        // Navigation state
+        let currentView = 'view-main';
+
+        // Color Picker State
+        let activePickerTarget = null; 
+        let currentHue = 0; 
+        let currentSat = 100; 
+        let currentVal = 100; 
+        let currentHex = "#ff0000";
+        let isInlineNotePicker = false;
+
+        function openExternalUrl(url) {
+            window.open(url, '_blank');
+        }
+
+        // Initialize IndexedDB
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onerror = (e) => reject(e);
+                request.onsuccess = (e) => {
+                    db = e.target.result;
+                    resolve(db);
+                };
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains("media")) db.createObjectStore("media", { keyPath: "id" });
+                    if (!db.objectStoreNames.contains("audio")) db.createObjectStore("audio", { keyPath: "id" });
+                    if (!db.objectStoreNames.contains("notes")) db.createObjectStore("notes", { keyPath: "id" });
+                    if (!db.objectStoreNames.contains("calc_history")) db.createObjectStore("calc_history", { keyPath: "id" });
+                };
+            });
+        }
+
+        function saveToDB(storeName, item) {
+            return new Promise((resolve) => {
+                const tx = db.transaction([storeName], "readwrite");
+                tx.objectStore(storeName).put(item);
+                tx.oncomplete = () => resolve();
+            });
+        }
+
+        function getAllFromDB(storeName) {
+            return new Promise((resolve) => {
+                const tx = db.transaction([storeName], "readonly");
+                const req = tx.objectStore(storeName).getAll();
+                req.onsuccess = () => resolve(req.result || []);
+            });
+        }
+
+        function deleteFromDB(storeName, id) {
+            return new Promise((resolve) => {
+                const tx = db.transaction([storeName], "readwrite");
+                tx.objectStore(storeName).delete(id);
+                tx.oncomplete = () => resolve();
+            });
+        }
+
+        function clearStoreInDB(storeName) {
+            return new Promise((resolve) => {
+                const tx = db.transaction([storeName], "readwrite");
+                tx.objectStore(storeName).clear();
+                tx.oncomplete = () => resolve();
+            });
+        }
+
+        // Navigation Engine
+        function navigateTo(targetViewId) {
+            const currentEl = document.getElementById(currentView);
+            const targetEl = document.getElementById(targetViewId);
+
+            if (currentEl && targetEl) {
+                currentEl.classList.remove('active-view');
+                currentEl.classList.add('hidden-view');
+
+                targetEl.classList.remove('hidden-view');
+                targetEl.classList.add('active-view');
+
+                currentView = targetViewId;
+                
+                const scrollable = targetEl.querySelector('.scrollable-content');
+                if(scrollable) scrollable.scrollTop = 0;
+            }
+        }
+
+        // WEBCAM CAMERA MODAL
+        let webcamStream = null;
+
+        async function openCameraModal() {
+            const modal = document.getElementById("modal-camera");
+            const video = document.getElementById("webcam-video");
+            
+            try {
+                webcamStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment" }, 
+                    audio: false 
+                });
+                video.srcObject = webcamStream;
+                modal.classList.remove("hidden");
+            } catch (err) {
+                await customAlert("Kameraya erişim izni verilmeli veya kullanılabilir kamera bulunamadı.");
+            }
+        }
+
+        function closeCameraModal() {
+            const modal = document.getElementById("modal-camera");
+            const video = document.getElementById("webcam-video");
+            
+            if (webcamStream) {
+                webcamStream.getTracks().forEach(track => track.stop());
+                webcamStream = null;
+            }
+            video.srcObject = null;
+            modal.classList.add("hidden");
+        }
+
+        async function takeWebcamPicture() {
+            const video = document.getElementById("webcam-video");
+            const canvas = document.getElementById("webcam-canvas");
+            
+            if (!video.videoWidth) return;
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const dataUrl = canvas.toDataURL("image/jpeg");
+            
+            const item = {
+                id: Date.now() + Math.random().toString(36).substr(2, 4),
+                type: 'image',
+                data: dataUrl,
+                name: 'Kamera_Cekimi.jpg',
+                date: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit' })
+            };
+
+            await saveToDB("media", item);
+            closeCameraModal();
+            loadMedia();
+        }
+
+        // Color Picker Canvas Logic
+        function initColorPickerCanvas() {
+            const canvas = document.getElementById("sat-val-canvas");
+            const ctx = canvas.getContext("2d");
+
+            ctx.fillStyle = `hsl(${currentHue}, 100%, 50%)`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const whiteGrad = ctx.createLinearGradient(0, 0, canvas.width, 0);
+            whiteGrad.addColorStop(0, 'rgba(255,255,255,1)');
+            whiteGrad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = whiteGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const blackGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            blackGrad.addColorStop(0, 'rgba(0,0,0,0)');
+            blackGrad.addColorStop(1, 'rgba(0,0,0,1)');
+            ctx.fillStyle = blackGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function updateColorFromHSV() {
+            initColorPickerCanvas();
+            
+            const rgb = hsvToRgb(currentHue, currentSat, currentVal);
+            currentHex = rgbToHex(rgb.r, rgb.g, rgb.b);
+
+            document.getElementById("picker-hex-input").value = currentHex;
+            document.getElementById("picker-preview-box").style.backgroundColor = currentHex;
+
+            const canvas = document.getElementById("sat-val-canvas");
+            const cursor = document.getElementById("sat-val-cursor");
+            const x = (currentSat / 100) * canvas.width;
+            const y = ((100 - currentVal) / 100) * canvas.height;
+            cursor.style.left = `${x}px`;
+            cursor.style.top = `${y}px`;
+
+            const hueBar = document.getElementById("hue-slider-container");
+            const hueCursor = document.getElementById("hue-cursor");
+            const hueY = (currentHue / 360) * hueBar.clientHeight;
+            hueCursor.style.top = `${hueY}px`;
+        }
+
+        function hsvToRgb(h, s, v) {
+            s /= 100; v /= 100;
+            let c = v * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = v - c;
+            let r=0, g=0, b=0;
+            if (h<60) { r=c; g=x; } else if (h<120) { r=x; g=c; }
+            else if (h<180) { g=c; b=x; } else if (h<240) { g=x; b=c; }
+            else if (h<300) { r=x; b=c; } else { r=c; b=x; }
+            return { r: Math.round((r+m)*255), g: Math.round((g+m)*255), b: Math.round((b+m)*255) };
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+        }
+
+        function hexToHsv(hex) {
+            let c = hex.replace('#','');
+            if (c.length === 3) c = c.split('').map(x=>x+x).join('');
+            const num = parseInt(c, 16);
+            let r = (num >> 16) & 255, g = (num >> 8) & 255, b = num & 255;
+            r/=255; g/=255; b/=255;
+            let max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min;
+            let h = 0, s = max === 0 ? 0 : d / max, v = max;
+            if (max !== min) {
+                switch(max) {
+                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                    case g: h = (b - r) / d + 2; break;
+                    case b: h = (r - g) / d + 4; break;
+                }
+                h /= 6;
+            }
+            return { h: h * 360, s: s * 100, v: v * 100 };
+        }
+
+        function openCustomPickerModal(targetKey, titleText) {
+            activePickerTarget = targetKey;
+            isInlineNotePicker = false;
+            document.getElementById("color-picker-title").innerText = titleText || "Renk Seçici";
+
+            const savedColor = localStorage.getItem(`color_${targetKey}`) || (targetKey === 'bg-color' ? '#ffffff' : targetKey === 'text-color' ? '#0f172a' : '#3b82f6');
+            const hsv = hexToHsv(savedColor);
+            currentHue = hsv.h; currentSat = hsv.s; currentVal = hsv.v;
+
+            document.getElementById("modal-color-picker").classList.remove("hidden");
+            updateColorFromHSV();
+        }
+
+        function openInlineColorPicker(commandName) {
+            activePickerTarget = commandName;
+            isInlineNotePicker = true;
+            document.getElementById("color-picker-title").innerText = commandName === 'foreColor' ? 'Yazı Rengi' : 'Vurgu Rengi';
+            
+            const hsv = hexToHsv('#ef4444');
+            currentHue = hsv.h; currentSat = hsv.s; currentVal = hsv.v;
+
+            document.getElementById("modal-color-picker").classList.remove("hidden");
+            updateColorFromHSV();
+        }
+
+        function closeColorPickerModal() {
+            document.getElementById("modal-color-picker").classList.add("hidden");
+        }
+
+        function applyCustomColor() {
+            if (isInlineNotePicker) {
+                execCmdArg(activePickerTarget, currentHex);
+            } else if (activePickerTarget) {
+                localStorage.setItem(`color_${activePickerTarget}`, currentHex);
+                applySavedTheme();
+            }
+            closeColorPickerModal();
+        }
+
+        function manualHexInput(hex) {
+            if (/^#[0-9A-F]{6}$/i.test(hex)) {
+                const hsv = hexToHsv(hex);
+                currentHue = hsv.h; currentSat = hsv.s; currentVal = hsv.v;
+                updateColorFromHSV();
+            }
+        }
+
+        // Mod ve Renk Yönetimi
+        function setDarkMode() {
+            localStorage.setItem("color_bg-color", "#0f172a");
+            localStorage.setItem("color_text-color", "#f8fafc");
+            applySavedTheme();
+        }
+
+        function setLightMode() {
+            localStorage.setItem("color_bg-color", "#ffffff");
+            localStorage.setItem("color_text-color", "#0f172a");
+            applySavedTheme();
+        }
+
+        function applySavedTheme() {
+            const bgColor = localStorage.getItem("color_bg-color") || "#ffffff";
+            const redBtn = localStorage.getItem("color_red-btn-color") || "#ef4444";
+            const greenBtn = localStorage.getItem("color_green-btn-color") || "#10b981";
+            const blueBtn = localStorage.getItem("color_blue-btn-color") || "#3b82f6";
+            const orangeBtn = localStorage.getItem("color_orange-btn-color") || "#f97316";
+            const purpleBtn = localStorage.getItem("color_purple-btn-color") || "#14b8a6";
+            const textColor = localStorage.getItem("color_text-color") || "#0f172a";
+
+            document.querySelectorAll(".app-view").forEach(el => {
+                el.style.setProperty('--app-bg-color', bgColor);
+                el.style.setProperty('--app-text-color', textColor);
+                el.style.color = textColor;
+            });
+
+            document.body.style.color = textColor;
+
+            if(document.getElementById("app-title-text")) document.getElementById("app-title-text").style.color = textColor;
+
+            if(document.getElementById("btn-color-red")) document.getElementById("btn-color-red").style.background = redBtn;
+            if(document.getElementById("btn-color-green")) document.getElementById("btn-color-green").style.background = greenBtn;
+            if(document.getElementById("btn-color-blue")) document.getElementById("btn-color-blue").style.background = blueBtn;
+            if(document.getElementById("btn-color-orange")) document.getElementById("btn-color-orange").style.background = orangeBtn;
+            if(document.getElementById("btn-color-purple")) document.getElementById("btn-color-purple").style.background = purpleBtn;
+
+            // Ayarlar ekranı önizleme alanlarını güncelle
+            if(document.getElementById("hex-bg-color")) {
+                document.getElementById("hex-bg-color").innerText = bgColor;
+                document.getElementById("preview-bg-color").style.backgroundColor = bgColor;
+
+                document.getElementById("hex-red-btn-color").innerText = redBtn;
+                document.getElementById("preview-red-btn-color").style.backgroundColor = redBtn;
+
+                document.getElementById("hex-green-btn-color").innerText = greenBtn;
+                document.getElementById("preview-green-btn-color").style.backgroundColor = greenBtn;
+
+                document.getElementById("hex-purple-btn-color").innerText = purpleBtn;
+                document.getElementById("preview-purple-btn-color").style.backgroundColor = purpleBtn;
+
+                document.getElementById("hex-blue-btn-color").innerText = blueBtn;
+                document.getElementById("preview-blue-btn-color").style.backgroundColor = blueBtn;
+
+                document.getElementById("hex-orange-btn-color").innerText = orangeBtn;
+                document.getElementById("preview-orange-btn-color").style.backgroundColor = orangeBtn;
+
+                document.getElementById("hex-text-color").innerText = textColor;
+                document.getElementById("preview-text-color").style.backgroundColor = textColor;
+            }
+        }
+
+        function resetThemeColors() {
+            localStorage.removeItem("color_bg-color");
+            localStorage.removeItem("color_red-btn-color");
+            localStorage.removeItem("color_green-btn-color");
+            localStorage.removeItem("color_blue-btn-color");
+            localStorage.removeItem("color_orange-btn-color");
+            localStorage.removeItem("color_purple-btn-color");
+            localStorage.removeItem("color_text-color");
+            applySavedTheme();
+        }
+
+        function setupPickerListeners() {
+            const satValBox = document.getElementById("sat-val-container");
+            const hueBar = document.getElementById("hue-slider-container");
+            let draggingSatVal = false;
+            let draggingHue = false;
+
+            function handleSatVal(e) {
+                const rect = satValBox.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                let x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+                let y = Math.max(0, Math.min(rect.height, clientY - rect.top));
+
+                currentSat = Math.round((x / rect.width) * 100);
+                currentVal = Math.round((1 - (y / rect.height)) * 100);
+                updateColorFromHSV();
+            }
+
+            function handleHue(e) {
+                const rect = hueBar.getBoundingClientRect();
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                let y = Math.max(0, Math.min(rect.height, clientY - rect.top));
+                currentHue = Math.round((y / rect.height) * 360);
+                updateColorFromHSV();
+            }
+
+            satValBox.addEventListener('mousedown', (e) => { draggingSatVal = true; handleSatVal(e); });
+            satValBox.addEventListener('touchstart', (e) => { draggingSatVal = true; handleSatVal(e); });
+
+            hueBar.addEventListener('mousedown', (e) => { draggingHue = true; handleHue(e); });
+            hueBar.addEventListener('touchstart', (e) => { draggingHue = true; handleHue(e); });
+
+            window.addEventListener('mousemove', (e) => {
+                if (draggingSatVal) handleSatVal(e);
+                if (draggingHue) handleHue(e);
+            });
+            window.addEventListener('touchmove', (e) => {
+                if (draggingSatVal) handleSatVal(e);
+                if (draggingHue) handleHue(e);
+            });
+            window.addEventListener('mouseup', () => { draggingSatVal = false; draggingHue = false; });
+            window.addEventListener('touchend', () => { draggingSatVal = false; draggingHue = false; });
+        }
+
+        // Media Management
+        async function handleMediaUpload(e) {
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+
+            for (let file of files) {
+                const reader = new FileReader();
+                reader.onload = async function(evt) {
+                    const item = {
+                        id: Date.now() + Math.random().toString(36).substr(2, 4),
+                        type: 'image',
+                        data: evt.target.result,
+                        name: file.name,
+                        date: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit' })
+                    };
+                    await saveToDB("media", item);
+                    loadMedia();
+                };
+                reader.readAsDataURL(file);
+            }
+            e.target.value = "";
+        }
+
+        async function loadMedia() {
+            const items = await getAllFromDB("media");
+            const grid = document.getElementById("media-grid");
+            document.getElementById("media-count-badge").innerText = items.length;
+            document.getElementById("media-stat-sub").innerText = `${items.length} Öğe Depolandı`;
+
+            if (items.length === 0) {
+                grid.innerHTML = `<div class="col-span-2 text-center py-12 text-slate-400 text-sm">Henüz fotoğraf yüklenmedi.</div>`;
+                return;
+            }
+
+            grid.innerHTML = items.map(item => `
+                <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col relative group">
+                    <div class="aspect-square bg-slate-900 flex items-center justify-center overflow-hidden">
+                        <img src="${item.data}" class="w-full h-full object-cover" loading="lazy">
+                    </div>
+                    <div class="p-2.5 flex items-center justify-between bg-white">
+                        <span class="text-[10px] text-slate-400 font-medium">${item.date}</span>
+                        <button onclick="deleteMediaItem('${item.id}')" class="text-red-500 hover:text-red-700 bg-red-50 p-1.5 rounded-lg transition" title="Sil">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function deleteMediaItem(id) {
+            await deleteFromDB("media", id);
+            loadMedia();
+        }
+
+        // Audio Recording Management
+        let mediaRecorder;
+        let audioChunks = [];
+        let recTimer;
+
+        async function startAudioRecording() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                await customAlert("Tarayıcınız ses kaydını desteklemiyor.");
+                return;
+            }
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => { if(e.data.size > 0) audioChunks.push(e.data); };
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.onloadend = async () => {
+                        const item = {
+                            id: Date.now().toString(),
+                            data: reader.result,
+                            date: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit' }),
+                            duration: document.getElementById("recording-timer").innerText
+                        };
+                        await saveToDB("audio", item);
+                        loadAudio();
+                    };
+                    reader.readAsDataURL(audioBlob);
+                    stream.getTracks().forEach(t => t.stop());
+                };
+
+                mediaRecorder.start();
+                
+                document.getElementById("btn-rec-start").disabled = true;
+                document.getElementById("btn-rec-start").classList.add("opacity-40");
+                document.getElementById("btn-rec-stop").disabled = false;
+                document.getElementById("btn-rec-stop").classList.remove("opacity-40", "cursor-not-allowed");
+                document.getElementById("recording-status").innerText = "Kayıt Yapılıyor...";
+                document.getElementById("recording-status").className = "text-xs font-semibold text-red-600 bg-red-100 px-3 py-1 rounded-full animate-pulse";
+
+                let secs = 0;
+                recTimer = setInterval(() => {
+                    secs++;
+                    const m = String(Math.floor(secs / 60)).padStart(2, '0');
+                    const s = String(secs % 60).padStart(2, '0');
+                    document.getElementById("recording-timer").innerText = `${m}:${s}`;
+                }, 1000);
+
+            } catch(err) {
+                await customAlert("Mikrofon izni verilmeli.");
+            }
+        }
+
+        function stopAudioRecording() {
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+                clearInterval(recTimer);
+
+                document.getElementById("btn-rec-start").disabled = false;
+                document.getElementById("btn-rec-start").classList.remove("opacity-40");
+                document.getElementById("btn-rec-stop").disabled = true;
+                document.getElementById("btn-rec-stop").classList.add("opacity-40", "cursor-not-allowed");
+                document.getElementById("recording-status").innerText = "Mikrofon Hazır";
+                document.getElementById("recording-status").className = "text-xs font-semibold text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full";
+                document.getElementById("recording-timer").innerText = "00:00";
+            }
+        }
+
+        async function loadAudio() {
+            const items = await getAllFromDB("audio");
+            const list = document.getElementById("audio-list");
+            document.getElementById("audio-count-badge").innerText = items.length;
+            document.getElementById("audio-stat-sub").innerText = `${items.length} Ses Kaydı`;
+
+            if (items.length === 0) {
+                list.innerHTML = `<div class="text-center py-12 text-slate-400 text-sm">Henüz kayıtlı ses yok.</div>`;
+                return;
+            }
+
+            list.innerHTML = items.map(item => `
+                <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm flex flex-col gap-2">
+                    <div class="flex items-center justify-between text-xs text-slate-500">
+                        <span class="font-bold text-emerald-600 flex items-center gap-1">
+                            <i class="fa-solid fa-stopwatch"></i> ${item.duration || "00:00"}
+                        </span>
+                        <span>${item.date}</span>
+                    </div>
+                    <audio controls src="${item.data}" class="w-full h-9 mt-1"></audio>
+                    <div class="flex justify-end pt-2">
+                        <button onclick="deleteAudioItem('${item.id}')" class="text-red-500 hover:text-red-700 bg-red-50 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition">
+                            <i class="fa-solid fa-trash-can"></i> Sil
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function deleteAudioItem(id) {
+            await deleteFromDB("audio", id);
+            loadAudio();
+        }
+
+        // Category UI
+        function loadCategoriesUI() {
+            const savedCats = localStorage.getItem("user_categories");
+            if (savedCats) {
+                try { categories = JSON.parse(savedCats); } catch(e){}
+            }
+
+            const pillsList = document.getElementById("category-pills-list");
+            
+            let html = `<button onclick="setFilterCategory('Tümü')" class="cat-pill ${currentCategoryFilter === 'Tümü' ? 'active bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'} px-3 py-1.5 rounded-lg font-medium whitespace-nowrap">Tümü</button>`;
+            
+            categories.forEach(cat => {
+                const isActive = currentCategoryFilter === cat;
+                const isDefault = defaultCategories.includes(cat);
+                
+                html += `
+                    <div class="inline-flex items-center rounded-lg ${isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'} font-medium whitespace-nowrap overflow-hidden">
+                        <button onclick="setFilterCategory('${cat}')" class="px-3 py-1.5">${cat}</button>
+                        ${!isDefault ? `
+                            <button onclick="deleteCategory('${cat}', event)" class="pr-2 pl-1 py-1.5 opacity-70 hover:opacity-100 text-xs" title="Kategoriyi Sil">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            });
+
+            pillsList.innerHTML = html;
+
+            const select = document.getElementById("note-category-select");
+            select.innerHTML = categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+        }
+
+        async function promptAddCategory() {
+            const newCat = await customPrompt("Yeni kategori adını giriniz:");
+            if (newCat && newCat.trim()) {
+                const trimmed = newCat.trim();
+                if (!categories.includes(trimmed)) {
+                    categories.push(trimmed);
+                    localStorage.setItem("user_categories", JSON.stringify(categories));
+                    loadCategoriesUI();
+                }
+            }
+        }
+
+        async function deleteCategory(catName, e) {
+            if(e) e.stopPropagation();
+            const confirmed = await customConfirm(`"${catName}" kategorisini silmek istediğinizden emin misiniz?`);
+            if (confirmed) {
+                categories = categories.filter(c => c !== catName);
+                localStorage.setItem("user_categories", JSON.stringify(categories));
+                if (currentCategoryFilter === catName) {
+                    currentCategoryFilter = 'Tümü';
+                }
+                loadCategoriesUI();
+                filterNotes();
+            }
+        }
+
+        // Notes Management
+        function toggleNoteEditor() {
+            const card = document.getElementById("note-editor-card");
+            card.classList.toggle("hidden");
+            card.classList.toggle("flex");
+        }
+
+        function execCmd(cmd) { document.execCommand(cmd, false, null); }
+        function execCmdArg(cmd, arg) { document.execCommand(cmd, false, arg); }
+
+        function updateWordCount() {
+            const text = document.getElementById("note-editor").innerText.trim();
+            const words = text ? text.split(/\s+/).length : 0;
+            const chars = text.length;
+            document.getElementById("note-word-count").innerText = `${words} Kelime | ${chars} Karakter`;
+        }
+
+        async function saveNote() {
+            const title = document.getElementById("note-title-input").value.trim() || "Başlıksız Not";
+            const category = document.getElementById("note-category-select").value;
+            const isPinned = document.getElementById("note-pin-checkbox").checked;
+            const content = document.getElementById("note-editor").innerHTML.trim();
+
+            if (!content || content === "<br>") {
+                await customAlert("Not içeriği boş kalamaz.");
+                return;
+            }
+
+            const item = {
+                id: Date.now().toString(),
+                title: title,
+                category: category,
+                isPinned: isPinned,
+                content: content,
+                date: new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit' })
+            };
+
+            await saveToDB("notes", item);
+            
+            document.getElementById("note-title-input").value = "";
+            document.getElementById("note-editor").innerHTML = "";
+            document.getElementById("note-pin-checkbox").checked = false;
+            toggleNoteEditor();
+
+            loadNotes();
+        }
+
+        async function loadNotes() {
+            const items = await getAllFromDB("notes");
+            document.getElementById("notes-stat-sub").innerText = `${items.length} Gelişmiş Not`;
+            
+            items.sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0) || b.id - a.id);
+            renderNotesList(items);
+        }
+
+        function renderNotesList(items) {
+            const list = document.getElementById("notes-list");
+            let filtered = currentCategoryFilter === 'Tümü' ? items : items.filter(i => i.category === currentCategoryFilter);
+            
+            const query = document.getElementById("note-search-input").value.toLowerCase();
+            if (query) {
+                filtered = filtered.filter(i => i.title.toLowerCase().includes(query) || i.content.toLowerCase().includes(query));
+            }
+
+            if (filtered.length === 0) {
+                list.innerHTML = `<div class="text-center py-12 text-slate-400 text-sm">Aranan kriterde not bulunamadı.</div>`;
+                return;
+            }
+
+            list.innerHTML = filtered.map(item => `
+                <div class="bg-white border ${item.isPinned ? 'border-amber-300 ring-2 ring-amber-100' : 'border-slate-200'} p-4 rounded-2xl shadow-sm flex flex-col gap-2 relative">
+                    <div class="flex items-center justify-between border-b pb-2 border-slate-100">
+                        <div class="flex items-center gap-2">
+                            ${item.isPinned ? '<i class="fa-solid fa-thumbtack text-amber-500 text-xs"></i>' : ''}
+                            <h3 class="font-bold text-slate-800 text-sm">${escapeHtml(item.title)}</h3>
+                        </div>
+                        <span class="text-[10px] font-semibold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">${item.category || 'Genel'}</span>
+                    </div>
+                    <div class="note-content text-slate-600 text-xs py-1 break-words overflow-hidden max-h-40">${item.content}</div>
+                    <div class="flex items-center justify-between pt-2 border-t border-slate-50 text-[10px] text-slate-400">
+                        <span>${item.date}</span>
+                        <button onclick="deleteNoteItem('${item.id}')" class="text-red-500 hover:text-red-700 bg-red-50 px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 transition">
+                            <i class="fa-solid fa-trash-can text-xs"></i> Sil
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function filterNotes() {
+            const items = await getAllFromDB("notes");
+            renderNotesList(items);
+        }
+
+        function setFilterCategory(cat) {
+            currentCategoryFilter = cat;
+            loadCategoriesUI();
+            filterNotes();
+        }
+
+        async function deleteNoteItem(id) {
+            await deleteFromDB("notes", id);
+            loadNotes();
+        }
+
+        // ==================== CALCULATOR ENGINE ====================
+        let calcCurrentInput = "0";
+        let calcExpressionStr = "";
+        let calcIsNewInput = true;
+        let calcOpenParenCount = 0;
+
+        function calcUpdateDisplay() {
+            const displayEl = document.getElementById("calc-display");
+            const exprEl = document.getElementById("calc-expression");
+            
+            if (displayEl) displayEl.innerText = calcCurrentInput;
+            if (exprEl) exprEl.innerText = calcExpressionStr;
+        }
+
+        function calcAppendNum(num) {
+            if (calcIsNewInput) {
+                calcCurrentInput = num;
+                calcIsNewInput = false;
+            } else {
+                if (calcCurrentInput === "0") {
+                    calcCurrentInput = num;
+                } else {
+                    calcCurrentInput += num;
+                }
+            }
+            calcUpdateDisplay();
+        }
+
+        function calcAppendDot() {
+            if (calcIsNewInput) {
+                calcCurrentInput = "0.";
+                calcIsNewInput = false;
+            } else if (!calcCurrentInput.includes(".")) {
+                calcCurrentInput += ".";
+            }
+            calcUpdateDisplay();
+        }
+
+        function calcAppendOp(op) {
+            if (!calcIsNewInput) {
+                calcExpressionStr += " " + calcCurrentInput + " " + op;
+                calcIsNewInput = true;
+            } else if (calcExpressionStr.length > 0) {
+                calcExpressionStr = calcExpressionStr.trim();
+                const lastChar = calcExpressionStr.slice(-1);
+                if (["+", "-", "×", "÷", "%", "^"].includes(lastChar)) {
+                    calcExpressionStr = calcExpressionStr.slice(0, -1) + op;
+                } else {
+                    calcExpressionStr += " " + op;
+                }
+            }
+            calcUpdateDisplay();
+        }
+
+        function calcAppendFunc(funcName) {
+            calcExpressionStr += " " + funcName + "(";
+            calcOpenParenCount++;
+            calcIsNewInput = true;
+            calcUpdateDisplay();
+        }
+
+        function calcAppendConstant(constant) {
+            if (constant === 'π') {
+                calcCurrentInput = Math.PI.toString();
+            } else if (constant === 'e') {
+                calcCurrentInput = Math.E.toString();
+            }
+            calcIsNewInput = false;
+            calcUpdateDisplay();
+        }
+
+        function calcParenthesis() {
+            if (calcOpenParenCount > 0 && !calcIsNewInput) {
+                calcExpressionStr += " " + calcCurrentInput + " )";
+                calcOpenParenCount--;
+                calcIsNewInput = true;
+            } else {
+                calcExpressionStr += " (";
+                calcOpenParenCount++;
+                calcIsNewInput = true;
+            }
+            calcUpdateDisplay();
+        }
+
+        function calcToggleSign() {
+            if (calcCurrentInput !== "0") {
+                if (calcCurrentInput.startsWith("-")) {
+                    calcCurrentInput = calcCurrentInput.substring(1);
+                } else {
+                    calcCurrentInput = "-" + calcCurrentInput;
+                }
+                calcUpdateDisplay();
+            }
+        }
+
+        function calcBackspace() {
+            if (calcIsNewInput) return;
+            if (calcCurrentInput.length > 1) {
+                calcCurrentInput = calcCurrentInput.slice(0, -1);
+            } else {
+                calcCurrentInput = "0";
+                calcIsNewInput = true;
+            }
+            calcUpdateDisplay();
+        }
+
+        function calcClear() {
+            calcCurrentInput = "0";
+            calcExpressionStr = "";
+            calcIsNewInput = true;
+            calcOpenParenCount = 0;
+            calcUpdateDisplay();
+        }
+
+        function calcFactorial(n) {
+            if (n < 0) return NaN;
+            if (n === 0 || n === 1) return 1;
+            let result = 1;
+            for (let i = 2; i <= n; i++) result *= i;
+            return result;
+        }
+
+        async function calcEvaluate() {
+            let fullExpr = calcExpressionStr;
+            if (!calcIsNewInput) {
+                fullExpr += " " + calcCurrentInput;
+            }
+
+            for (let i = 0; i < calcOpenParenCount; i++) {
+                fullExpr += " )";
+            }
+
+            if (!fullExpr.trim()) return;
+
+            const rawExpr = fullExpr;
+
+            try {
+                let parsed = fullExpr
+                    .replace(/×/g, "*")
+                    .replace(/÷/g, "/")
+                    .replace(/%/g, "/100")
+                    .replace(/\^/g, "**")
+                    .replace(/sin\(/g, "Math.sin(")
+                    .replace(/cos\(/g, "Math.cos(")
+                    .replace(/tan\(/g, "Math.tan(")
+                    .replace(/sqrt\(/g, "Math.sqrt(")
+                    .replace(/log\(/g, "Math.log10(")
+                    .replace(/ln\(/g, "Math.log(");
+
+                parsed = parsed.replace(/(\d+)!/g, (match, p1) => calcFactorial(parseInt(p1)));
+
+                let evalResult = Function('"use strict";return (' + parsed + ')')();
+
+                if (typeof evalResult === 'number') {
+                    if (!isFinite(evalResult) || isNaN(evalResult)) {
+                        calcCurrentInput = "Hata";
+                    } else {
+                        evalResult = Math.round(evalResult * 1e10) / 1e10;
+                        calcCurrentInput = evalResult.toString();
+
+                        const historyItem = {
+                            id: Date.now().toString(),
+                            expression: rawExpr,
+                            result: calcCurrentInput,
+                            date: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+                        };
+                        await saveToDB("calc_history", historyItem);
+                    }
+                } else {
+                    calcCurrentInput = "Hata";
+                }
+            } catch (err) {
+                calcCurrentInput = "Hata";
+            }
+
+            calcExpressionStr = "";
+            calcIsNewInput = true;
+            calcOpenParenCount = 0;
+            calcUpdateDisplay();
+        }
+
+        function calcToggleScientific() {
+            const panel = document.getElementById("calc-scientific-panel");
+            const btn = document.getElementById("btn-calc-mode");
+            if (panel.classList.contains("hidden")) {
+                panel.classList.remove("hidden");
+                btn.innerText = "Standart";
+            } else {
+                panel.classList.add("hidden");
+                btn.innerText = "Bilimsel";
+            }
+        }
+
+        async function calcToggleHistoryModal() {
+            const modal = document.getElementById("modal-calc-history");
+            if (modal.classList.contains("hidden")) {
+                await calcLoadHistory();
+                modal.classList.remove("hidden");
+            } else {
+                modal.classList.add("hidden");
+            }
+        }
+
+        async function calcLoadHistory() {
+            const items = await getAllFromDB("calc_history");
+            const list = document.getElementById("calc-history-list");
+
+            if (items.length === 0) {
+                list.innerHTML = `<div class="text-center py-8 text-slate-500 text-xs">Henüz işlem geçmişi yok.</div>`;
+                return;
+            }
+
+            items.sort((a, b) => b.id - a.id);
+
+            list.innerHTML = items.map(item => `
+                <div onclick="calcUseHistoryItem('${item.result}')" class="bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 p-2.5 rounded-xl flex flex-col gap-1 cursor-pointer transition active:scale-98">
+                    <div class="flex justify-between text-[10px] text-slate-400">
+                        <span>${item.expression} =</span>
+                        <span>${item.date}</span>
+                    </div>
+                    <div class="text-right text-orange-400 font-bold font-mono text-base">${item.result}</div>
+                </div>
+            `).join('');
+        }
+
+        function calcUseHistoryItem(resVal) {
+            calcCurrentInput = resVal;
+            calcIsNewInput = false;
+            calcUpdateDisplay();
+            calcToggleHistoryModal();
+        }
+
+        async function calcClearHistory() {
+            const confirm = await customConfirm("Tüm hesaplama geçmişini silmek istediğinize emin misiniz?");
+            if (confirm) {
+                await clearStoreInDB("calc_history");
+                calcLoadHistory();
+            }
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        // --- ZİKİRMATİK MOTORU ---
+        let dhikrCount = parseInt(localStorage.getItem("dhikr_count")) || 0;
+        let dhikrTarget = parseInt(localStorage.getItem("dhikr_target")) || 33;
+
+        function updateDhikrUI() {
+            const displayEl = document.getElementById("dhikr-display");
+            const targetEl = document.getElementById("dhikr-target-info");
+            const statSub = document.getElementById("dhikr-stat-sub");
+
+            if (displayEl) displayEl.innerText = dhikrCount;
+            if (targetEl) targetEl.innerText = `Hedef: ${dhikrTarget}`;
+            if (statSub) statSub.innerText = `Toplam: ${dhikrCount} Zikir`;
+        }
+
+        function incrementDhikr() {
+            dhikrCount++;
+            localStorage.setItem("dhikr_count", dhikrCount);
+            if (dhikrCount === dhikrTarget) {
+                if (navigator.vibrate) navigator.vibrate(200);
+            }
+            updateDhikrUI();
+        }
+
+        async function resetDhikr() {
+            const confirmed = await customConfirm("Sayacı sıfırlamak istediğinize emin misiniz?");
+            if (confirmed) {
+                dhikrCount = 0;
+                localStorage.setItem("dhikr_count", dhikrCount);
+                updateDhikrUI();
+            }
+        }
+
+        async function setDhikrTarget() {
+            const inputVal = await customPrompt("Hedef zikir sayısını giriniz:", dhikrTarget);
+            if (inputVal !== null) {
+                const parsed = parseInt(inputVal);
+                if (!isNaN(parsed) && parsed > 0) {
+                    dhikrTarget = parsed;
+                    localStorage.setItem("dhikr_target", dhikrTarget);
+                    updateDhikrUI();
+                } else {
+                    await customAlert("Lütfen geçerli bir sayı giriniz.");
+                }
+            }
+        }
+
+        async function saveDhikrRecord() {
+            await customAlert(`Şu ana kadar toplam ${dhikrCount} zikir çektiniz. Verileriniz tarayıcınızda saklanmaktadır.`);
+        }
+        
+        // App Init
+        window.onload = async () => {
+            await initDB();
+            setupPickerListeners();
+            applySavedTheme();
+            loadCategoriesUI();
+            loadMedia();
+            loadAudio();
+            loadNotes();
+            updateDhikrUI();
+        };
+    </script>
+</body>
+</html>
